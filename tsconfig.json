@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     /* 请访问 https://aka.ms/tsconfig，了解有关此文件的详细信息 */
-
+    "types": ["bun-types"],
     /* 项目 */
     // "incremental": true,                              /* 保存 .tsbuildinfo 文件以允许项目增量编译。 */
     // "composite": true,                                /* 启用允许将 TypeScript 项目与项目引用一起使用的约束。 */
