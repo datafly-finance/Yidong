@@ -20,12 +20,23 @@ export const SendNewsMsg = ( msg: YiDongType, bot: string = "https://qyapi.weixi
             ]
         }
     }
-    // axios.post( bot, msgText,
-    //     {
-    //         headers: {
-    //             "Content-Type": "application/json"
-    //         }
-    //     })
+    fetch( bot, {
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify( msgText ),
+        method: "POST"
+    } )
+}
+
+export const SendTextMsg = ( msg: string, bot:string = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=3946e1f9-4326-4a9b-9945-887649475ac3" ) =>
+{
+    const msgText = {
+        "msgtype": "text",
+        "text": {
+            "content": msg,
+        }
+    }
     fetch( bot, {
         headers: {
             "Content-Type": "application/json"
