@@ -102,30 +102,29 @@ export const codes = [
     "0.300505"  // 川金诺
 ]
 
-export const yidongData = ( codes: string[] ) =>
-{
-    let lastTime = "";
-    const subject = new Subject<YiDongType>();
-    Tick( 5 * 1000, !!process.env.DEV ).subscribe(
-        async () =>
-        {
-            const data = await YiDongFetcher( codes );
-            data.forEach( it =>
-            {
-                if ( it[ 0 ] > lastTime )
-                {
-                    lastTime = it[ 0 ];
-                    subject.next( it );
-                } else
-                {
-                    Log( "不更新", it )
-                }
-            } )
-        }
-    )
-    return subject;
-}
-
+// export const yidongData = ( codes: string[] ) =>
+// {
+//     let lastTime = "";
+//     const subject = new Subject<YiDongType>();
+//     Tick( 5 * 1000, !!process.env.DEV ).subscribe(
+//         async () =>
+//         {
+//             const data = await YiDongFetcher( codes );
+//             data.forEach( it =>
+//             {
+//                 if ( it[ 0 ] > lastTime )
+//                 {
+//                     lastTime = it[ 0 ];
+//                     subject.next( it );
+//                 } else
+//                 {
+//                     Log( "不更新", it )
+//                 }
+//             } )
+//         }
+//     )
+//     return subject;
+// }
 
 type FilterFn = ( it: YiDongType ) => boolean;
 
@@ -138,7 +137,9 @@ export const YiDongData = ( isDev: boolean = false ) => ( second: number ) => ( 
         .subscribe(
             async () =>
             {
+                Log( "YiDongData", codes )
                 const data = await YiDongFetcher( codes );
+                Log( "YiDongData", data )
                 data.forEach( it =>
                 {
                     if ( !Record.has( keyFn(it) ) )
@@ -156,3 +157,5 @@ export const YiDongWithFilter = ( filters: FilterFn[] ) => ( subject: Subject<Yi
     subject.pipe(
         filter( it => filters.every( fn => fn( it ) ) )
     )
+
+export const yidongData =  YiDongData( !!process.env.DEV )(5);
