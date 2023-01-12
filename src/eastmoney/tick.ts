@@ -1,4 +1,5 @@
-import { Subject } from 'rxjs';
+import dayjs from 'dayjs';
+import { interval, Subject } from 'rxjs';
 import { EventSourceBuilder } from './../utils/eventSource';
 import { CodeWithType } from './../helper/format';
 
@@ -51,6 +52,15 @@ export const TickData = ( code: string ) => EventSourceBuilder( url( code ) )(
 export const Tick = ( code: string ) =>
 {
     const response = new Subject<StockTick>();
+    let last = ""
+    interval( 5 * 60 * 1000 ).subscribe( () =>
+    {
+        const now = dayjs().format( "HH:mm:ss" );
+        if ( now > "09:00:00" || now < "09:15:00" )
+        {
+            last = ''
+        }
+    } )
     TickData( code ).subscribe( tick =>
     {
         if ( tick )
@@ -59,6 +69,8 @@ export const Tick = ( code: string ) =>
             {
                 if ( it )
                 {
+                    if ( it[ 0 ] < last ) return;
+                    last = it[ 0 ]
                     response.next( it )
                 }
             } )
@@ -94,39 +106,60 @@ export const TickHub = () =>
 }
 
 // 是否是大单
-export const isBig = ( tick: StockTick ) => Number( tick[ 2 ] ) > 1000;
+export const isBig = ( tick: StockTick ) => ( parseFloat( tick[ 1 ] ) * parseInt( tick[ 2 ] ) ) > 10000
 // 振幅
-export const zhenfu = ( ticks: StockTick[] ) => <Out>( fn: (rate:number)=>Out ) =>
+export const zhenfu = ( count: number ) => ( ticks: StockTick[] ) => <Out> ( fn: ( rate: number ) => Out ) =>
 {
-    if ( ticks.length < 5 ) return null;
-    const temp = ticks.slice( -5 )
-    const price = temp.map( it => Number( it[ 1 ] ) )
-
-    const min = Math.min( ...price );
-    const max = Math.max(...price)
-
-    const rate = ( ( max - min ) / min ) * 100;
-    return fn( rate )
-}
-export const realZhenfu = ( ticks: StockTick[] ) => ( fn: (rate:number)=>boolean ) =>
-{
-    if ( ticks.length < 5 ) return false;
-    const temp = ticks.slice( -5 )
+    if ( ticks.length < count ) return null;
+    const temp = ticks.slice( -count )
     const price = temp.map( it => Number( it[ 1 ] ) )
 
     const last = price[ price.length - 1 ]
     const min = Math.min( ...price );
-    const max = Math.max(...price)
-    if(last === min) {
-        const rate = ((last - max)/max) * 100;
+    const max = Math.max( ...price );
+
+    let value: number;
+    if ( last === min )
+    {
+        value = max
+    }
+    if ( last === max )
+    {
+        value = min
+    }
+    if ( value! )
+    {
+        const rate = ( ( last - value ) / value ) * 100;
+        return fn( rate )
+    } else
+    {
+        const rate = ( ( max - min ) / min ) * 100
         return fn( rate )
     }
-    if (last === max) {
-        const rate = ((last - min)/max) * 100;
+}
+export const realZhenfu = ( count: number ) => ( ticks: StockTick[] ) => ( fn: ( rate: number ) => boolean ) =>
+{
+    if ( ticks.length < count ) return false;
+    const temp = ticks.slice( -count )
+    const price = temp.map( it => Number( it[ 1 ] ) )
+
+    const last = price[ price.length - 1 ]
+    const min = Math.min( ...price );
+    const max = Math.max( ...price )
+    if ( last === min )
+    {
+        const rate = ( ( last - max ) / max ) * 100;
+        return fn( rate )
+    }
+    if ( last === max )
+    {
+        const rate = ( ( last - min ) / max ) * 100;
         return fn( rate )
     }
     return false;
 }
 // 是否剧震
-export const isUp = ( ticks: StockTick[] ) => realZhenfu( ticks )( rate => rate > 0.5 )
-export const isDown = ( ticks: StockTick[] ) => realZhenfu( ticks )( rate => rate < -0.5 )
+export const isUp = ( ticks: StockTick[] ) => realZhenfu( 20 )( ticks )( rate => rate > 0.5 )
+export const isDown = ( ticks: StockTick[] ) => realZhenfu( 20 )( ticks )( rate => rate < -0.5 )
+
+export const isUpDownConfig = ( count: number ) => ( fn: ( rate: number ) => boolean ) => ( ticks: StockTick[] ) => realZhenfu( count )( ticks )( fn ) 

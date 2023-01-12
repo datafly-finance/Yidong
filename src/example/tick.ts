@@ -1,7 +1,6 @@
 import dayjs from 'dayjs';
-import { filter } from 'rxjs';
 import { Log } from '../utils/log';
-import { TickHub, isBig, isUp, isDown, zhenfu } from '../eastmoney/tick';
+import { TickHub, isBig, zhenfu, isUpDownConfig } from '../eastmoney/tick';
 import { bufferCount } from 'rxjs';
 import { SendTextMsg } from '../helper/wxMsg';
 
@@ -28,25 +27,45 @@ const codeName = ( code: string ) =>
 
 AddStockTick( codes )
 
-const isWorkingTime = ()=>{
-    if (!!process.env.DEV) return true;
+const isWorkingTime = () =>
+{
+    if ( !!process.env.DEV ) return true;
     const now = dayjs().format( "HH:mm:ss" );
     if ( dayjs().day() < 1 || dayjs().day() > 5 ) return false;
     if ( now >= "09:15:00" && now <= "11:30:00" || now >= "13:00:00" && now <= "15:00:00" )
     {
         return true;
     }
+    Log( "不在交易时间范围内!" )
     return false;
 }
 
-const SendText = (msg:string)=>{
-    if (isWorkingTime()){
-        SendTextMsg(msg)
-    }else{
-        Log("不在交易时间，不发送消息",msg)
+const isInTime = ( time: string ) =>
+{
+    if ( !!process.env.DEV ) return true;
+    const start = dayjs().subtract( 2, 's' ).format( "HH:mm:ss" );
+    const now = dayjs().format( "HH:mm:ss" );
+    if ( now >= time && start <= time )
+    {
+        return true;
+    }
+    Log( "不在指定时间范围内!" )
+    return false;
+
+}
+
+const SendText = ( time: string, msg: string ) =>
+{
+    if ( isWorkingTime() && isInTime( time ) )
+    {
+        SendTextMsg( msg )
     }
 }
 
+const formatMoney = ( price: string, count: string ) =>
+{
+    return ( parseFloat( price ) * parseInt( count ) / 100 ).toFixed( 2 ) + "万"
+}
 
 codes.map( code => ( {
     code,
@@ -54,29 +73,47 @@ codes.map( code => ( {
 } ) ).map( it =>
 {
     const { code, data$ } = it;
-    data$?.pipe(
-        bufferCount( 7, 1 ),
-    ).subscribe( its =>
+    const UpDown = ( count: number ) => ( fn: {
+        up: ( rate: number ) => boolean
+        down: ( rate: number ) => boolean
+    } ) =>
     {
-        const last = its[ its.length - 1 ]
-        const rate = zhenfu( its )
-        if ( isUp( its ) )
+        data$?.pipe(
+            bufferCount( count, 1 ),
+        ).subscribe( its =>
         {
-            Log(  codeName(code), last[ 0 ], "大幅上涨", rate( it => it )?.toFixed( 2 ) )
-            SendText(`${last[ 0 ]}【${codeName(code)}】大幅上涨 ${rate( it => it )?.toFixed( 2 )}%`)
-        }
-        if ( isDown( its ) )
-        {
-            Log(  codeName(code), last[ 0 ], "大幅下跌", rate( it => it )?.toFixed( 2 ) )
-            SendText(`${last[ 0 ]}【${codeName(code)}】大幅下跌 ${rate( it => it )?.toFixed( 2 )}%`)
-        }
-    } )
-    data$?.subscribe( it =>
-        {
-            if ( isBig( it ) )
+            const last = its[ its.length - 1 ]
+            const rate = zhenfu( count )( its )
+            const minute = count * 3 / 60
+            const isUpDown = isUpDownConfig( count )
+            if ( isUpDown( fn.up )( its ) )
             {
-                Log( codeName(code), it[ 0 ], "出现大单", it[ 1 ], it[ 2 ], it[ 4 ] == "1" ? "卖" : it[ 4 ] === "2" ? "买" : "竞价" )
-                SendText(`${it[ 0 ]}【${codeName(code)}】出现大单 ${it[ 1 ]} ${it[ 2 ]} ${it[ 4 ] == "1" ? "卖" : it[ 4 ] === "2" ? "买" : "竞价"}`)
+                Log( codeName( code ), `${ last[ 0 ] }【${ codeName( code ) }】在${ minute }分钟内上涨:${ rate( it => it )?.toFixed( 2 ) }%` )
+                SendText( last[ 0 ], `${ last[ 0 ] }【${ codeName( code ) }】在${ minute }分钟内上涨:${ rate( it => it )?.toFixed( 2 ) }%` )
+            }
+            if ( isUpDown( fn.down )( its ) )
+            {
+                Log( codeName( code ), `${ last[ 0 ] }【${ codeName( code ) }】在${ minute }分钟内下跌:${ rate( it => it )?.toFixed( 2 ) }%` )
+                SendText( last[ 0 ], `${ last[ 0 ] }【${ codeName( code ) }】在${ minute }分钟内下跌:${ rate( it => it )?.toFixed( 2 ) }%` )
             }
         } )
+    }
+    const MinuteCount = 20
+    UpDown( MinuteCount * 0.5 )( {
+        up: rate => rate > 0.5,
+        down: rate => rate < -0.5
+    } )
+    UpDown( MinuteCount * 3 )( {
+        up: rate => rate > 1,
+        down: rate => rate < -1
+    } )
+
+    data$?.subscribe( it =>
+    {
+        if ( isBig( it ) && it[4] !== "4" )
+        {
+            Log( codeName( code ), `${ it[ 0 ] }【${ codeName( code ) }】出现${ it[ 4 ] == "1" ? "卖" :"买" }单 ${ formatMoney( it[ 1 ], it[ 2 ] ) }, 价格:${ it[ 1 ] } ` )
+            SendText( it[ 0 ], `${ it[ 0 ] }【${ codeName( code ) }】出现${ it[ 4 ] == "1" ? "卖" : "买" }单 ${ formatMoney( it[ 1 ], it[ 2 ] ) }, 价格:${ it[ 1 ] } ${ it[ 4 ] == "1" ? "卖" : "买" }` )
+        }
+    } )
 } )
