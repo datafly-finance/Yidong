@@ -1,10 +1,6 @@
-import dayjs from "dayjs"
-import { filter, from, interval, Observable, Subject } from "rxjs"
-import { clear$ } from "../helper/clear"
-import { record } from "../helper/record"
+import { distinct, filter, from, Subject, switchMap } from "rxjs"
 import { Tick } from "../helper/tick"
 import { Get } from "../utils/fetcher"
-import { Log } from "../utils/log"
 
 export namespace States
 {
@@ -104,25 +100,12 @@ type FilterFn = ( it: YiDongType ) => boolean;
 
 export const YiDongData = ( isDev: boolean = false ) => ( second: number ) => ( codes: string[] ) =>
 {
-    const keyFn = (it:YiDongType) => `${it[0]}-${it[1]}-${it[3]}`
-    const Record = record<YiDongType>(keyFn)( clear$ );
-    const subject = new Subject<YiDongType>();
-    Tick( second * 1000, isDev )
-    .subscribe(
-        async () =>
-        {
-                const data = await YiDongFetcher( codes );
-                data.forEach( it =>
-                {
-                    if ( !Record.has( keyFn(it) ) )
-                    {
-                        subject.next( it );
-                        Record.record(it);
-                    }
-                } )
-            }
-        )
-    return subject;
+    const keyFn = ( it: YiDongType ) => `${ it[ 0 ] }-${ it[ 1 ] }-${ it[ 3 ] }`
+    return Tick( second * 1000, isDev ).pipe(
+        switchMap( ()=> YiDongFetcher( codes ) ),
+        switchMap( it => from( it ) ),
+        distinct( keyFn ),
+    )
 }
 
 export const YiDongWithFilter = ( filters: FilterFn[] ) => ( subject: Subject<YiDongType> ) =>
@@ -130,4 +113,4 @@ export const YiDongWithFilter = ( filters: FilterFn[] ) => ( subject: Subject<Yi
         filter( it => filters.every( fn => fn( it ) ) )
     )
 
-export const yidongData =  YiDongData( !!process.env.DEV )(5);
+export const yidongData = YiDongData( !!process.env.DEV )( 5 );
