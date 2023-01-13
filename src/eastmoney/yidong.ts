@@ -1,7 +1,5 @@
 import dayjs from "dayjs"
-import { StatsBase } from "fs"
-import { type } from "os"
-import { filter, interval, Observable, Subject } from "rxjs"
+import { filter, from, interval, Observable, Subject } from "rxjs"
 import { clear$ } from "../helper/clear"
 import { record } from "../helper/record"
 import { Tick } from "../helper/tick"
@@ -134,12 +132,10 @@ export const YiDongData = ( isDev: boolean = false ) => ( second: number ) => ( 
     const Record = record<YiDongType>(keyFn)( clear$ );
     const subject = new Subject<YiDongType>();
     Tick( second * 1000, isDev )
-        .subscribe(
-            async () =>
-            {
-                Log( "YiDongData", codes )
+    .subscribe(
+        async () =>
+        {
                 const data = await YiDongFetcher( codes );
-                Log( "YiDongData", data )
                 data.forEach( it =>
                 {
                     if ( !Record.has( keyFn(it) ) )

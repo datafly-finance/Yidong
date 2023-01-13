@@ -45,3 +45,19 @@ export const SendTextMsg = ( msg: string, bot:string = "https://qyapi.weixin.qq.
         method: "POST"
     } )
 }
+
+export const SendMDMsg = ( msg: string, bot:string = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=3946e1f9-4326-4a9b-9945-887649475ac3") => {
+    const msgText = {
+        "msgtype": "markdown",
+        "markdown": {
+            "content": msg,
+        }
+    }
+    fetch( bot, {
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify( msgText ),
+        method: "POST"
+    } )
+}
