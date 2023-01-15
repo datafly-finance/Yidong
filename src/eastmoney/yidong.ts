@@ -1,4 +1,4 @@
-import { distinct, filter, from, Subject, switchMap } from "rxjs"
+import { distinct, filter, from, Observable, Subject, switchMap } from "rxjs"
 import { Tick } from "../helper/tick"
 import { Get } from "../utils/fetcher"
 
@@ -108,7 +108,7 @@ export const YiDongData = ( isDev: boolean = false ) => ( second: number ) => ( 
     )
 }
 
-export const YiDongWithFilter = ( filters: FilterFn[] ) => ( subject: Subject<YiDongType> ) =>
+export const YiDongWithFilter = ( filters: FilterFn[] ) => ( subject: Observable<YiDongType> ) =>
     subject.pipe(
         filter( it => filters.every( fn => fn( it ) ) )
     )
