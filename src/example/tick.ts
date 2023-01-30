@@ -95,68 +95,68 @@ const tick$ = codes.map( code => ( {
 
 
 // 异动与大单
-// tick$.map( it =>
-// {
-//     const { code, data$ } = it;
-//     const UpDown = ( count: number ) => ( fn: {
-//         up: ( rate: number ) => boolean
-//         down: ( rate: number ) => boolean
-//     } ) =>
-//     {
+tick$.map( it =>
+{
+    const { code, data$ } = it;
+    const UpDown = ( count: number ) => ( fn: {
+        up: ( rate: number ) => boolean
+        down: ( rate: number ) => boolean
+    } ) =>
+    {
 
-//         data$?.pipe(
-//             bufferCount( count, 1 ),
-//         ).subscribe( its =>
-//         {
-//             const last = its[ its.length - 1 ]
-//             const rate = zhenfu( count )( its )
-//             const minute = count * 3 / 60
-//             const isUpDown = isUpDownConfig( count )
+        data$?.pipe(
+            bufferCount( count, 1 ),
+        ).subscribe( its =>
+        {
+            const last = its[ its.length - 1 ]
+            const rate = zhenfu( count )( its )
+            const minute = count * 3 / 60
+            const isUpDown = isUpDownConfig( count )
 
-//             const time = last[ 0 ];
-//             const rateStr = rate( it => it )?.toFixed( 2 ) ?? '';
-//             const minuteStr = minute === 0.5 ? "半" : minute.toString();
-//             const price = last[ 1 ];
-//             const YiDongMsgCurryFac = curry( YiDongMsg )
-//             const YiDongMsgCurry = YiDongMsgCurryFac( time )( codeName( code ) )( rateStr )( minuteStr )( price )
-//             if ( isUpDown( fn.up )( its ) )
-//             {
-//                 Log( YiDongMsgCurry( 'up' ) )
-//                 SendText( time, YiDongMsgCurry( 'up' ) )
-//             }
-//             if ( isUpDown( fn.down )( its ) )
-//             {
-//                 Log( YiDongMsgCurry( 'down' ) )
-//                 SendText( time, YiDongMsgCurry( 'down' ) )
-//             }
-//         } )
-//     }
-//     const MinuteCount = 20
-//     UpDown( MinuteCount * 0.5 )( {
-//         up: rate => rate > 0.5,
-//         down: rate => rate < -0.5
-//     } )
-//     UpDown( MinuteCount * 3 )( {
-//         up: rate => rate > 1,
-//         down: rate => rate < -1
-//     } )
+            const time = last[ 0 ];
+            const rateStr = rate( it => it )?.toFixed( 2 ) ?? '';
+            const minuteStr = minute === 0.5 ? "半" : minute.toString();
+            const price = last[ 1 ];
+            const YiDongMsgCurryFac = curry( YiDongMsg )
+            const YiDongMsgCurry = YiDongMsgCurryFac( time )( codeName( code ) )( rateStr )( minuteStr )( price )
+            if ( isUpDown( fn.up )( its ) )
+            {
+                Log( YiDongMsgCurry( 'up' ) )
+                SendText( time, YiDongMsgCurry( 'up' ) )
+            }
+            if ( isUpDown( fn.down )( its ) )
+            {
+                Log( YiDongMsgCurry( 'down' ) )
+                SendText( time, YiDongMsgCurry( 'down' ) )
+            }
+        } )
+    }
+    const MinuteCount = 20
+    UpDown( MinuteCount * 0.5 )( {
+        up: rate => rate > 0.5,
+        down: rate => rate < -0.5
+    } )
+    UpDown( MinuteCount * 3 )( {
+        up: rate => rate > 1,
+        down: rate => rate < -1
+    } )
 
-//     data$?.subscribe( it =>
-//     {
-//         if ( isBig( it ) && it[ 4 ] !== "4" )
-//         {
-//             const time = it[ 0 ];
-//             const price = it[ 1 ]
-//             const money = formatMoney( it[ 1 ], it[ 2 ] );
-//             const direction = it[ 4 ] === "2" ? 'up' : 'down';
+    data$?.subscribe( it =>
+    {
+        if ( isBig( it ) && it[ 4 ] !== "4" )
+        {
+            const time = it[ 0 ];
+            const price = it[ 1 ]
+            const money = formatMoney( it[ 1 ], it[ 2 ] );
+            const direction = it[ 4 ] === "2" ? 'up' : 'down';
 
-//             const msg = DaDanMsg( time, codeName( code ), money, price, direction );
+            const msg = DaDanMsg( time, codeName( code ), money, price, direction );
 
-//             Log( msg )
-//             SendText( time, msg )
-//         }
-//     } )
-// } )
+            Log( msg )
+            SendText( time, msg )
+        }
+    } )
+} )
 
 // 信息汇总
 /** 
@@ -171,7 +171,7 @@ tick$.map( it =>
 {
     const { code, data$ } = it;
     const MinuteCount = 20
-    data$?.pipe(
+    const baseInfo = data$?.pipe(
         // bufferTime(1000 * 60 )
         bufferCount( MinuteCount * 1 ),
         filter( its => its.length > 0 ),
@@ -209,29 +209,46 @@ tick$.map( it =>
                 downMoneyAvg
             }
         } ),
-        bufferCount( 5 ),
-        map( its => ( {
-            time: `${ its[ 0 ]?.time } - ${ its[ its.length - 1 ]?.time }`,
-            rate: its.reduce( ( p, v ) => p + v.rate, 0 ),
-            upAvg: its.reduce( ( p, v ) => p + v.upAvg, 0 ),
-        } ) ),
-        map( it => ( {
-            time: it.time,
-            t: it.rate * it.upAvg * 100
-        } ) ),
-        map( it => ( {
-            time: it.time.split(" - ")[ it.time.split(" - ").length - 1 ],
-            t: it.t
-        })),
-        scan( ( p, v ) => {
-            p.time.push( v.time )
-            p.value.push( v.t )
-            return p
-        },{
-            time:Array<string>(),
-            value:Array<number>()
-        })
-    ).subscribe( Log )
+    );
+    baseInfo?.subscribe( it =>
+    {
+        const { time, code, upAvg, upBiShu, downAvg, upCount, upMoney, downBiShu, downCount, downMoney, rate, percent } = it;
+
+        const msg = `
+时间：${ time }  代码：${ codeName( code ) }
+> 买入：${ upCount }手 ${ upBiShu }笔 ${ upAvg.toFixed(2) }万/笔 买入金额：${ upMoney.toFixed( 2 ) }万
+> 卖出：${ downCount }手 ${ downBiShu }笔 ${ downAvg.toFixed(2) }万/笔 卖出金额：${ downMoney.toFixed( 2 ) }万
+> 股价波动：${ rate.toFixed( 2 ) }(${ percent.toFixed( 2 ) }%) 买入/卖出：${ ( upMoney / downMoney ).toFixed( 2 ) }
+`
+        SendMD( time, msg )
+        Log( msg )
+    } )
+
+    // baseInfo?.pipe(
+    //     bufferCount( 5 ),
+    //     map( its => ( {
+    //         time: `${ its[ 0 ]?.time } - ${ its[ its.length - 1 ]?.time }`,
+    //         rate: its.reduce( ( p, v ) => p + v.rate, 0 ),
+    //         upAvg: its.reduce( ( p, v ) => p + v.upAvg, 0 ),
+    //     } ) ),
+    //     map( it => ( {
+    //         time: it.time,
+    //         t: it.rate * it.upAvg * 100
+    //     } ) ),
+    //     map( it => ( {
+    //         time: it.time.split(" - ")[ it.time.split(" - ").length - 1 ],
+    //         t: it.t
+    //     })),
+    //     scan( ( p, v ) => {
+    //         p.time.push( v.time )
+    //         p.value.push( v.t )
+    //         return p
+    //     },{
+    //         time:Array<string>(),
+    //         value:Array<number>()
+    //     })
+    // )
+
 } )
 
 // const msg =
