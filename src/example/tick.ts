@@ -13,10 +13,10 @@ import { TickHub, isBig, zhenfu, isUpDownConfig } from '../eastmoney/tick';
 const { QueryStockTick, DelStockTick, HasStockTick, AddStockTick } = TickHub()
 
 export const codes = [
-    // "688670", // 金迪克
+    "688670", // 金迪克
     "000815", // 美利云
-    // "002469", // 三维化学
-    // "300505"  // 川金诺
+    "002469", // 三维化学
+    "300505"  // 川金诺
 ]
 
 const codeName = ( code: string ) =>
@@ -167,89 +167,89 @@ tick$.map( it =>
  *    3. 买入/卖出笔数
  *    4. 买入/卖出 平均 手/笔
  */
-tick$.map( it =>
-{
-    const { code, data$ } = it;
-    const MinuteCount = 20
-    const baseInfo = data$?.pipe(
-        // bufferTime(1000 * 60 )
-        bufferCount( MinuteCount * 1 ),
-        filter( its => its.length > 0 ),
-        map( its =>
-        {
-            const last = its[ its.length - 1 ]
-            const first = its[ 0 ]
-            const time = `${ first[ 0 ] } - ${ last[ 0 ] }`;
-            const rate = Number( last[ 1 ] ) - Number( first[ 1 ] )
-            const percent = ( rate / Number( first[ 1 ] ) * 100 )
-            const upCount = its.filter( it => it[ 4 ] === "2" ).reduce( ( p, v ) => p + Number( v[ 2 ] ), 0 );
-            const downCount = its.filter( it => it[ 4 ] === "1" ).reduce( ( p, v ) => p + Number( v[ 2 ] ), 0 );
-            const upBiShu = its.filter( it => it[ 4 ] === "2" ).reduce( ( p, v ) => p + Number( v[ 3 ] ), 0 );
-            const downBiShu = its.filter( it => it[ 4 ] === "1" ).reduce( ( p, v ) => p + Number( v[ 3 ] ), 0 );
-            const upMoney = its.filter( it => it[ 4 ] === "2" ).reduce( ( p, v ) => p + Number( v[ 1 ] ) * Number( v[ 2 ] ) / 100, 0 );
-            const downMoney = its.filter( it => it[ 4 ] === "1" ).reduce( ( p, v ) => p + Number( v[ 1 ] ) * Number( v[ 2 ] ) / 100, 0 );
-            const upAvg = upBiShu ? upCount / upBiShu : 0;
-            const downAvg = downBiShu ? downCount / downBiShu : 0;
-            const upMoneyAvg = upBiShu ? upMoney / upBiShu : 0;
-            const downMoneyAvg = downBiShu ? downMoney / downBiShu : 0;
-            return {
-                code,
-                time,
-                rate,
-                percent,
-                upCount,
-                downCount,
-                upBiShu,
-                downBiShu,
-                upMoney,
-                downMoney,
-                upAvg,
-                downAvg,
-                upMoneyAvg,
-                downMoneyAvg
-            }
-        } ),
-    );
-    baseInfo?.subscribe( it =>
-    {
-        const { time, code, upAvg, upBiShu, downAvg, upCount, upMoney, downBiShu, downCount, downMoney, rate, percent } = it;
+// tick$.map( it =>
+// {
+//     const { code, data$ } = it;
+//     const MinuteCount = 20
+//     const baseInfo = data$?.pipe(
+//         // bufferTime(1000 * 60 )
+//         bufferCount( MinuteCount * 1 ),
+//         filter( its => its.length > 0 ),
+//         map( its =>
+//         {
+//             const last = its[ its.length - 1 ]
+//             const first = its[ 0 ]
+//             const time = `${ first[ 0 ] } - ${ last[ 0 ] }`;
+//             const rate = Number( last[ 1 ] ) - Number( first[ 1 ] )
+//             const percent = ( rate / Number( first[ 1 ] ) * 100 )
+//             const upCount = its.filter( it => it[ 4 ] === "2" ).reduce( ( p, v ) => p + Number( v[ 2 ] ), 0 );
+//             const downCount = its.filter( it => it[ 4 ] === "1" ).reduce( ( p, v ) => p + Number( v[ 2 ] ), 0 );
+//             const upBiShu = its.filter( it => it[ 4 ] === "2" ).reduce( ( p, v ) => p + Number( v[ 3 ] ), 0 );
+//             const downBiShu = its.filter( it => it[ 4 ] === "1" ).reduce( ( p, v ) => p + Number( v[ 3 ] ), 0 );
+//             const upMoney = its.filter( it => it[ 4 ] === "2" ).reduce( ( p, v ) => p + Number( v[ 1 ] ) * Number( v[ 2 ] ) / 100, 0 );
+//             const downMoney = its.filter( it => it[ 4 ] === "1" ).reduce( ( p, v ) => p + Number( v[ 1 ] ) * Number( v[ 2 ] ) / 100, 0 );
+//             const upAvg = upBiShu ? upCount / upBiShu : 0;
+//             const downAvg = downBiShu ? downCount / downBiShu : 0;
+//             const upMoneyAvg = upBiShu ? upMoney / upBiShu : 0;
+//             const downMoneyAvg = downBiShu ? downMoney / downBiShu : 0;
+//             return {
+//                 code,
+//                 time,
+//                 rate,
+//                 percent,
+//                 upCount,
+//                 downCount,
+//                 upBiShu,
+//                 downBiShu,
+//                 upMoney,
+//                 downMoney,
+//                 upAvg,
+//                 downAvg,
+//                 upMoneyAvg,
+//                 downMoneyAvg
+//             }
+//         } ),
+//     );
+//     baseInfo?.subscribe( it =>
+//     {
+//         const { time, code, upAvg, upBiShu, downAvg, upCount, upMoney, downBiShu, downCount, downMoney, rate, percent } = it;
 
-        const msg = `
-时间：${ time }  代码：${ codeName( code ) }
-> 买入：${ upCount }手 ${ upBiShu }笔 ${ upAvg.toFixed(2) }万/笔 买入金额：${ upMoney.toFixed( 2 ) }万
-> 卖出：${ downCount }手 ${ downBiShu }笔 ${ downAvg.toFixed(2) }万/笔 卖出金额：${ downMoney.toFixed( 2 ) }万
-> 股价波动：${ rate.toFixed( 2 ) }(${ percent.toFixed( 2 ) }%) 买入/卖出：${ ( upMoney / downMoney ).toFixed( 2 ) }
-`
-        SendMD( time, msg )
-        Log( msg )
-    } )
+//         const msg = `
+// 时间：${ time }  代码：${ codeName( code ) }
+// > 买入：${ upCount }手 ${ upBiShu }笔 ${ upAvg.toFixed(2) }万/笔 买入金额：${ upMoney.toFixed( 2 ) }万
+// > 卖出：${ downCount }手 ${ downBiShu }笔 ${ downAvg.toFixed(2) }万/笔 卖出金额：${ downMoney.toFixed( 2 ) }万
+// > 股价波动：${ rate.toFixed( 2 ) }(${ percent.toFixed( 2 ) }%) 买入/卖出：${ ( upMoney / downMoney ).toFixed( 2 ) }
+// `
+//         SendMD( time, msg )
+//         Log( msg )
+//     } )
 
-    // baseInfo?.pipe(
-    //     bufferCount( 5 ),
-    //     map( its => ( {
-    //         time: `${ its[ 0 ]?.time } - ${ its[ its.length - 1 ]?.time }`,
-    //         rate: its.reduce( ( p, v ) => p + v.rate, 0 ),
-    //         upAvg: its.reduce( ( p, v ) => p + v.upAvg, 0 ),
-    //     } ) ),
-    //     map( it => ( {
-    //         time: it.time,
-    //         t: it.rate * it.upAvg * 100
-    //     } ) ),
-    //     map( it => ( {
-    //         time: it.time.split(" - ")[ it.time.split(" - ").length - 1 ],
-    //         t: it.t
-    //     })),
-    //     scan( ( p, v ) => {
-    //         p.time.push( v.time )
-    //         p.value.push( v.t )
-    //         return p
-    //     },{
-    //         time:Array<string>(),
-    //         value:Array<number>()
-    //     })
-    // )
+//     // baseInfo?.pipe(
+//     //     bufferCount( 5 ),
+//     //     map( its => ( {
+//     //         time: `${ its[ 0 ]?.time } - ${ its[ its.length - 1 ]?.time }`,
+//     //         rate: its.reduce( ( p, v ) => p + v.rate, 0 ),
+//     //         upAvg: its.reduce( ( p, v ) => p + v.upAvg, 0 ),
+//     //     } ) ),
+//     //     map( it => ( {
+//     //         time: it.time,
+//     //         t: it.rate * it.upAvg * 100
+//     //     } ) ),
+//     //     map( it => ( {
+//     //         time: it.time.split(" - ")[ it.time.split(" - ").length - 1 ],
+//     //         t: it.t
+//     //     })),
+//     //     scan( ( p, v ) => {
+//     //         p.time.push( v.time )
+//     //         p.value.push( v.t )
+//     //         return p
+//     //     },{
+//     //         time:Array<string>(),
+//     //         value:Array<number>()
+//     //     })
+//     // )
 
-} )
+// } )
 
 // const msg =
 // `
